@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// file holds a full file path, processed data, and error (if any).
+// file holds a file path (with dir), processed data, and error (if any).
 type file struct {
 	path string
 	data string
