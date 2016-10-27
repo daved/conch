@@ -10,14 +10,13 @@ be serial if only one CPU is available. Width, in this case, helps control
 the maximum available goroutines to limit the usage of RAM (see heap
 profile results).
 
-Usage:
-	* This is not properly setup to be built. Use "go run main.go".
-
-Available flags:
+ Available flags:
 	-slow
-		Slow processing to clarify behavior.
-	-profmem={filename}
-		Run memory profile and write to named file.
+		slow processing to clarify behavior
+	-width int
+		set concurrency width (default 8)
 
+For convenience, a sub-command has been provided (conchtestdata) which will
+generate the required files for processing.
 */
 package main
