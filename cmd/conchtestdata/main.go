@@ -42,7 +42,7 @@ func main() {
 		}
 	}
 
-	if err := os.Mkdir(opts.dir, 0700); err != nil {
+	if err := os.Mkdir(opts.dir, 0775); err != nil {
 		fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
