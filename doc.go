@@ -17,7 +17,8 @@ profile results).
 		set concurrency width (default 8)
 
 For convenience, a sub-command has been provided (conchtestdata) which will
-generate the required files for processing.
+generate the required files for processing. More specifically, run
+`conchtestdata` before running `conch0`.
 
 */
 package main

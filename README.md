@@ -12,11 +12,12 @@ serial if only one CPU is available. Width, in this case, helps control the
 maximum available goroutines to limit the usage of RAM (see heap profile
 results).
 
-    Available flags:
-        -slow
+     Available flags:
+    	-slow
     		slow processing to clarify behavior
     	-width int
     		set concurrency width (default 8)
 
 For convenience, a sub-command has been provided (conchtestdata) which will
-generate the required files for processing.
+generate the required files for processing. More specifically, run
+`conchtestdata` before running `conch0`.
