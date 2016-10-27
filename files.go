@@ -1,17 +1,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"io/ioutil"
 	"os"
 	"strings"
 )
-
-// fileOutput holds a file path (w/ dir), processed data, and error (if any).
-type fileOutput struct {
-	path string
-	data string
-	err  error
-}
 
 // fileInfoGroup holds a slice of os.FileInfo along with the directory that the
 // info came from.
@@ -36,4 +30,45 @@ func newFileInfoGroup(dir string) (*fileInfoGroup, error) {
 	}
 
 	return &fileInfoGroup{dir: dir, fsi: fsi}, nil
+}
+
+// fileOutput holds a file path, processed data, and error (if any).
+type fileOutput struct {
+	path string
+	data string
+	err  error
+}
+
+// newFileOutput uses the provided path to open and decompress a file, and
+// returns a pointer to a new fileOutput.
+func newFileOutput(path string) *fileOutput {
+	fo := &fileOutput{path: path}
+
+	f, err := os.Open(path)
+	if err != nil {
+		fo.err = err
+		return fo
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		fo.err = err
+		return fo
+	}
+	defer func() {
+		_ = gzr.Close()
+	}()
+
+	data, err := ioutil.ReadAll(gzr)
+	if err != nil {
+		fo.err = err
+		return fo
+	}
+
+	fo.data = string(data)
+
+	return fo
 }
