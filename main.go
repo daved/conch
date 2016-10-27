@@ -26,7 +26,7 @@ func main() {
 	flag.Parse()
 
 	// get populated filesInfo type
-	fsi, err := gatherFilesInfo("./testdata")
+	fsi, err := gatherFilesInfo("./testfiles")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

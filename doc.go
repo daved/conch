@@ -1,6 +1,6 @@
 /*
 
-conch0 collects file info from the "testdata" directory and concurrently
+conch0 collects file info from the "testfiles" directory and concurrently
 processes the files by decompressing the contents and then printing the
 data or related error.
 
