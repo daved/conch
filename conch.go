@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// conch holds a file info group, and done, out, and err channels.
 type conch struct {
 	fig  *fileInfoGroup
 	done chan struct{}
@@ -28,7 +29,8 @@ func (c *conch) doneChan() chan struct{} {
 	return c.done
 }
 
-// feedPaths is a generator that sends paths out to digest goroutines.
+// feedPaths is a generator that sends paths out for processing. If canceled,
+// an error is returned.
 func (c *conch) feedPaths(paths chan string) {
 	for _, v := range c.fig.fsi {
 		select {
@@ -41,7 +43,9 @@ func (c *conch) feedPaths(paths chan string) {
 	close(paths)
 }
 
-// fanout sets-up digest goroutines according to width.
+// fanout sets-up digest goroutines according to width. Each digest goroutine
+// waits for data from the paths channel and the entire function collapses when
+// completed.
 func (c *conch) fanout(paths chan string) {
 	var wg sync.WaitGroup
 	wg.Add(width)
