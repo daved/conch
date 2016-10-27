@@ -6,23 +6,23 @@ import (
 	"strings"
 )
 
-// file holds a file path (with dir), processed data, and error (if any).
-type file struct {
+// fileOutput holds a file path (w/ dir), processed data, and error (if any).
+type fileOutput struct {
 	path string
 	data string
 	err  error
 }
 
-// filesInfo holds a slice of os.FileInfo along with the directory the
-// contents came from.
-type filesInfo struct {
+// fileInfoGroup holds a slice of os.FileInfo along with the directory that the
+// info came from.
+type fileInfoGroup struct {
 	dir string
 	fsi []os.FileInfo
 }
 
-// gatherFilesInfo is a convenience function which grabs all gzipped files
-// within the provided directory with a depth of 1.
-func gatherFilesInfo(dir string) (*filesInfo, error) {
+// newFileInfoGroup returns a pointer to a fileInfoGroup populated by all
+// gzipped files within the provided directory with a depth of 1.
+func newFileInfoGroup(dir string) (*fileInfoGroup, error) {
 	fsi, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -35,5 +35,5 @@ func gatherFilesInfo(dir string) (*filesInfo, error) {
 		}
 	}
 
-	return &filesInfo{dir: dir, fsi: fsi}, nil
+	return &fileInfoGroup{dir: dir, fsi: fsi}, nil
 }

@@ -17,36 +17,32 @@ var (
 
 func main() {
 	// define and parse flags
-	{
-		flag.BoolVar(&slow, "slow", slow,
-			`Slow processing to clarify behavior.`)
-		flag.IntVar(&width, "width", width,
-			`Set concurrency width.`)
-	}
+	flag.BoolVar(&slow, "slow", slow, `slow processing to clarify behavior`)
+	flag.IntVar(&width, "width", width, `set concurrency width`)
 	flag.Parse()
 
-	// get populated filesInfo type
-	fsi, err := gatherFilesInfo("./testfiles")
+	// get fileInfoGroup
+	fig, err := newFileInfoGroup("./testfiles")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	// setup done channel and clean up
-	done := make(chan struct{})
-	defer close(done)
+	// get new conch and setup cleanup
+	c := newConch(fig)
+	defer close(c.doneChan())
 
-	// get files and error channels
-	fs, errc := funnel(done, fsi)
+	// get fileOutput and error channels
+	fos, errc := c.run()
 
-	// print file contents or error
-	for f := range fs {
+	// fan-in: print file contents or error
+	for fo := range fos {
 		select {
 		case err := <-errc:
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		default:
-			fmt.Println(f.path, f.data, f.err)
+			fmt.Println(fo.path, fo.data, fo.err)
 		}
 	}
 }

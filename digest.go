@@ -10,9 +10,9 @@ import (
 // digest processes the file located at the currently provided path, and
 // sends out a new result. It could be used, instead, to communicate with
 // relevant micorservices.
-func digest(done <-chan struct{}, paths <-chan string, c chan<- file) {
+func digest(done <-chan struct{}, paths <-chan string, c chan<- fileOutput) {
 	for p := range paths {
-		r := file{path: p}
+		r := fileOutput{path: p}
 
 		func() {
 			f, err := os.Open(p)
