@@ -43,11 +43,12 @@ func main() {
 	// get fileOutput and error channels
 	fos, errc := c.run()
 
-	// print file contents or error
+	// print file contents
 	for fo := range fos {
 		fmt.Println(fo.path, fo.data, fo.err)
 	}
 
+	// print error, if any
 	select {
 	case err := <-errc:
 		fmt.Fprintln(os.Stderr, err)
