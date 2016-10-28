@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/codemodus/sigmon"
 )
 
 var (
@@ -16,6 +18,9 @@ var (
 )
 
 func main() {
+	sm := sigmon.New(nil)
+	sm.Run()
+
 	// define and parse flags
 	flag.BoolVar(&slow, "slow", slow, `slow processing to clarify behavior`)
 	flag.IntVar(&width, "width", width, `set concurrency width`)
@@ -30,19 +35,25 @@ func main() {
 
 	// get new conch and setup cleanup
 	c := newConch(fig)
-	defer close(c.doneChan())
+
+	sm.Set(func(s *sigmon.SignalMonitor) {
+		close(c.doneChan())
+	})
 
 	// get fileOutput and error channels
 	fos, errc := c.run()
 
 	// print file contents or error
 	for fo := range fos {
-		select {
-		case err := <-errc:
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		default:
-			fmt.Println(fo.path, fo.data, fo.err)
-		}
+		fmt.Println(fo.path, fo.data, fo.err)
 	}
+
+	select {
+	case err := <-errc:
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	default:
+	}
+
+	sm.Stop()
 }
