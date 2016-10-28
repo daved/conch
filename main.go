@@ -35,7 +35,7 @@ func main() {
 	// get fileOutput and error channels
 	fos, errc := c.run()
 
-	// fan-in: print file contents or error
+	// print file contents or error
 	for fo := range fos {
 		select {
 		case err := <-errc:
