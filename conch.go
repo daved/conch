@@ -21,7 +21,7 @@ func newConch(fig *fileInfoGroup) *conch {
 		fig:  fig,
 		done: make(chan struct{}),
 		out:  make(chan *fileOutput),
-		err:  make(chan error, 1),
+		err:  make(chan error, 100),
 	}
 }
 
@@ -33,15 +33,15 @@ func (c *conch) doneChan() chan struct{} {
 // feedPaths is a generator that sends paths out for processing. If canceled,
 // an error is returned.
 func (c *conch) feedPaths(paths chan string) {
+	defer close(paths)
 	for _, v := range c.fig.fsi {
 		select {
 		case paths <- filepath.Join(c.fig.dir, v.Name()):
 		case <-c.done:
 			c.err <- errors.New("canceled")
+			return
 		}
 	}
-
-	close(paths)
 }
 
 // digest processes the file located at the currently provided path, and
@@ -52,8 +52,9 @@ func (c *conch) digest(paths <-chan string) {
 
 		if slow {
 			select {
-			case <-time.After(time.Second):
+			case <-time.After(1 * time.Millisecond):
 			case <-c.done:
+				c.err <- errors.New("canceled in slow")
 				return
 			}
 		}
@@ -61,6 +62,7 @@ func (c *conch) digest(paths <-chan string) {
 		select {
 		case c.out <- r:
 		case <-c.done:
+			c.err <- errors.New("canceled in digest")
 			return
 		}
 	}

@@ -35,9 +35,13 @@ func main() {
 
 	// get new conch and setup cleanup
 	c := newConch(fig)
+	hasClosedChannel := false
 
 	sm.Set(func(s *sigmon.SignalMonitor) {
-		close(c.doneChan())
+		if !hasClosedChannel {
+			hasClosedChannel = true
+			close(c.doneChan())
+		}
 	})
 
 	// get fileOutput and error channels
@@ -47,13 +51,19 @@ func main() {
 	for fo := range fos {
 		fmt.Println(fo.path, fo.data, fo.err)
 	}
-
 	// print error, if any
-	select {
-	case err := <-errc:
-		fmt.Fprintln(os.Stderr, err)
+	isError := false
+	FOR_LOOP: for{
+		select {
+		case err := <-errc:
+			fmt.Fprintln(os.Stderr, err)
+			isError = true
+		default:
+			break FOR_LOOP
+		}
+	}
+	if isError {
 		os.Exit(1)
-	default:
 	}
 
 	sm.Stop()
