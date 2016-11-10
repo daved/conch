@@ -33,15 +33,15 @@ func (c *conch) doneChan() chan struct{} {
 // feedPaths is a generator that sends paths out for processing. If canceled,
 // an error is returned.
 func (c *conch) feedPaths(paths chan string) {
+	defer close(paths)
 	for _, v := range c.fig.fsi {
 		select {
 		case paths <- filepath.Join(c.fig.dir, v.Name()):
 		case <-c.done:
 			c.err <- errors.New("canceled")
+			return
 		}
 	}
-
-	close(paths)
 }
 
 // digest processes the file located at the currently provided path, and
