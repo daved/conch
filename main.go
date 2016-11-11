@@ -38,6 +38,7 @@ func main() {
 
 	sm.Set(func(s *sigmon.SignalMonitor) {
 		close(c.doneChan())
+		sm.Stop()
 	})
 
 	// get fileOutput and error channels
