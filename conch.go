@@ -7,91 +7,98 @@ import (
 	"time"
 )
 
-// conch holds a file info group, and done, out, and err channels.
+// conch holds a file info group, and done channel.
 type conch struct {
-	fig  *fileInfoGroup
-	done chan struct{}
-	out  chan *fileOutput
-	err  chan error
+	fig *fileInfoGroup
+	d   chan struct{}
 }
 
-// newConch returns a pointer to a new conch with channels setup.
+// newConch returns a pointer to a new conch with channel setup.
 func newConch(fig *fileInfoGroup) *conch {
 	return &conch{
-		fig:  fig,
-		done: make(chan struct{}),
-		out:  make(chan *fileOutput),
-		err:  make(chan error, 1),
+		fig: fig,
+		d:   make(chan struct{}),
 	}
 }
 
-// doneChan returns the conch done channel.
-func (c *conch) doneChan() chan struct{} {
-	return c.done
+// done returns the done channel.
+func (c *conch) done() chan struct{} {
+	return c.d
 }
 
-// feedPaths is a generator that sends paths out for processing. If canceled,
-// an error is returned.
-func (c *conch) feedPaths(paths chan string) {
-	defer close(paths)
-	for _, v := range c.fig.fsi {
-		select {
-		case paths <- filepath.Join(c.fig.dir, v.Name()):
-		case <-c.done:
-			c.err <- errors.New("canceled")
-			return
+// produce is a generator that produces paths for processing. If canceled, an
+// error is produced.
+func (c *conch) produce() (<-chan string, <-chan error) {
+	paths := make(chan string)
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(paths)
+
+		for _, v := range c.fig.fsi {
+			select {
+			case paths <- filepath.Join(c.fig.dir, v.Name()):
+			case <-c.d:
+				errs <- errors.New("canceled")
+				return
+			}
 		}
-	}
+	}()
+
+	return paths, errs
 }
 
-// digest processes the file located at the currently provided path, and
-// sends out a new result.
-func (c *conch) digest(paths <-chan string) {
+// digest processes the file located at the currently provided path, and sends
+// out a new result.
+func (c *conch) digest(paths <-chan string, fos chan<- *fileOutput) {
 	for p := range paths {
-		r := newFileOutput(p)
+		fo := newFileOutput(p)
 
 		if slow {
 			select {
 			case <-time.After(time.Second):
-			case <-c.done:
+			case <-c.d:
 				return
 			}
 		}
 
 		select {
-		case c.out <- r:
-		case <-c.done:
+		case fos <- fo:
+		case <-c.d:
 			return
 		}
 	}
 }
 
-// fanout sets-up digest goroutines according to width. Each digest goroutine
+// consume sets-up digest goroutines according to width. Each digest goroutine
 // waits for data from the paths channel and the entire function collapses when
 // completed.
-func (c *conch) fanout(paths chan string) {
-	var wg sync.WaitGroup
-	wg.Add(width)
+func (c *conch) consume(paths <-chan string) <-chan *fileOutput {
+	fos := make(chan *fileOutput)
 
-	// setup digesters by width
-	for i := 0; i < width; i++ {
-		go func() {
-			c.digest(paths)
-			wg.Done()
-		}()
-	}
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(width)
 
-	wg.Wait()
-	close(c.out)
+		for i := 0; i < width; i++ {
+			go func() {
+				c.digest(paths, fos)
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
+		close(fos)
+	}()
+
+	return fos
 }
 
-// run wires up the paths chan, calls the path generator, calls the fanout, and
-// returns the out and err channels.
+// run calls the path generator, calls the consume func using the returned
+// paths channel, and returns the outs and errs channels.
 func (c *conch) run() (<-chan *fileOutput, <-chan error) {
-	paths := make(chan string)
+	paths, errs := c.produce()
+	fos := c.consume(paths)
 
-	go c.feedPaths(paths)
-	go c.fanout(paths)
-
-	return c.out, c.err
+	return fos, errs
 }

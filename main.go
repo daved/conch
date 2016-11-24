@@ -37,12 +37,12 @@ func main() {
 	c := newConch(fig)
 
 	sm.Set(func(s *sigmon.SignalMonitor) {
-		close(c.doneChan())
+		close(c.done())
 		sm.Stop()
 	})
 
 	// get fileOutput and error channels
-	fos, errc := c.run()
+	fos, errs := c.run()
 
 	// print file contents
 	for fo := range fos {
@@ -51,7 +51,7 @@ func main() {
 
 	// print error, if any
 	select {
-	case err := <-errc:
+	case err := <-errs:
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	default:
