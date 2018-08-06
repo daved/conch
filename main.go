@@ -8,53 +8,36 @@ import (
 	"github.com/codemodus/sigmon"
 )
 
-var (
-	// slow enables a slowing of the digest function and may help users to
-	// better understand the implementation of concurrency
-	slow = false
-
-	// width controls the amount of goroutines running the digest function
-	width = 8
-)
-
 func main() {
 	sm := sigmon.New(nil)
-	sm.Run()
+	sm.Start()
 
-	// define and parse flags
+	var (
+		slow  = false
+		width = 8
+	)
 	flag.BoolVar(&slow, "slow", slow, `slow processing to clarify behavior`)
 	flag.IntVar(&width, "width", width, `set concurrency width`)
 	flag.Parse()
 
-	// get fileInfoGroup
-	fig, err := newFileInfoGroup("./testfiles")
+	paths, err := gzipFilePaths("./testfiles")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Printf("cannot get paths: %s\n", err)
 		os.Exit(1)
 	}
+	c := newConch()
 
-	// get new conch and setup cleanup
-	c := newConch(fig)
-
-	sm.Set(func(s *sigmon.SignalMonitor) {
-		close(c.done())
-		sm.Stop()
+	sm.Set(func(s *sigmon.State) {
+		close(c.done()) // trip on any system signal
 	})
 
-	// get fileOutput and error channels
-	fos, errs := c.run()
-
-	// print file contents
-	for fo := range fos {
-		fmt.Println(fo.path, fo.data, fo.err)
+	fis, runErr := c.run(slow, width, paths)
+	for fi := range fis {
+		fmt.Println(fi.path, fi.data, fi.err)
 	}
 
-	// print error, if any
-	select {
-	case err := <-errs:
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	default:
+	if err = runErr(); err != nil {
+		fmt.Printf("run error: %s\n", err)
 	}
 
 	sm.Stop()
