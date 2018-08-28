@@ -1,6 +1,6 @@
 /*
 
-conch0 collects file info from the "testfiles" directory and concurrently
+conch collects file info from the "testfiles" directory and concurrently
 processes the files by decompressing the contents and then printing the
 data or related error.
 
@@ -18,7 +18,7 @@ profile results).
 
 For convenience, a sub-command has been provided (conchtestdata) which will
 generate the required files for processing. More specifically, run
-`conchtestdata` before running `conch0`.
+`conchtestdata` before running `conch`.
 
 */
 package main

@@ -1,8 +1,8 @@
 # conchtestdata
     
-    // see github.com/daved/conch0
+    // see github.com/daved/conch
 
-conchtestdata generates files for processing by the conch0 command.
+conchtestdata generates files for processing by the conch command.
 
      Available flags:
     	-dir string
