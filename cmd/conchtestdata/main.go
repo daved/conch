@@ -7,50 +7,55 @@ import (
 	"path/filepath"
 )
 
-type options struct {
-	qty int
-	dir string
-}
-
-func newOptionsDefault() *options {
-	return &options{
-		qty: 1024,
-		dir: "./testfiles",
-	}
-}
-
 func main() {
-	opts := newOptionsDefault()
-	{
-		flag.IntVar(&opts.qty, "qty", opts.qty,
-			`quantity of test files`)
-		flag.StringVar(&opts.dir, "dir", opts.dir,
-			`location of test files`)
-	}
-	flag.Parse()
-
-	if opts.qty < 1 {
-		opts.qty = 1
-	}
-
-	opts.dir = filepath.Clean(opts.dir)
-
-	if _, err := os.Stat(opts.dir); !os.IsNotExist(err) {
-		if err := os.RemoveAll(opts.dir); err != nil {
-			fmt.Fprint(os.Stderr, err)
-			os.Exit(1)
-		}
-	}
-
-	if err := os.Mkdir(opts.dir, 0775); err != nil {
-		fmt.Fprint(os.Stderr, err)
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err) //nolint
 		os.Exit(1)
 	}
+}
 
-	for i := 0; i < opts.qty; i++ {
-		if err := createGZFile(opts.dir, opts.qty, i); err != nil {
-			fmt.Fprint(os.Stderr, err)
-			os.Exit(1)
+func run() error {
+	var (
+		qty = 1024
+		dir = "./testdata"
+	)
+	flag.IntVar(&qty, "qty", qty, `quantity of test files`)
+	flag.StringVar(&dir, "dir", dir, `location of test files`)
+	flag.Parse()
+
+	if qty < 1 {
+		qty = 1
+	}
+	dir = filepath.Clean(dir)
+
+	if err := prepDir(dir); err != nil {
+		return err
+	}
+
+	dLen := digitLength(qty)
+	for i := 0; i < qty; i++ {
+		if err := createGZFile(dir, dLen, i); err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+func prepDir(dir string) error {
+	wrapError := func(err error) error {
+		return fmt.Errorf("cannot prepare directory: %s", err)
+	}
+
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		if err := os.RemoveAll(dir); err != nil {
+			return wrapError(err)
+		}
+	}
+
+	if err := os.Mkdir(dir, 0775); err != nil { //nolint
+		return wrapError(err)
+	}
+
+	return nil
 }

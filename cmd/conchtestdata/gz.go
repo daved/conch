@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func digitLen(i int) int {
+func digitLength(i int) int {
 	for n := 1; n < 100000; n++ {
 		if int64(float64(i)/math.Pow10(n)) == 0 {
 			return n
@@ -19,30 +19,26 @@ func digitLen(i int) int {
 	return 0
 }
 
-func createGZFile(dir string, max, i int) error {
-	dLen := digitLen(max)
-	padNum := fmt.Sprintf("%0"+strconv.Itoa(dLen)+"d", i)
+func createGZFile(dir string, dLen, i int) error {
+	wrapError := func(err error) error {
+		return fmt.Errorf("cannot create gz file: %s", err)
+	}
 
+	padNum := fmt.Sprintf("%0"+strconv.Itoa(dLen)+"d", i)
 	filename := fmt.Sprintf("file%s.gz", padNum)
-	filedata := []byte(fmt.Sprintf("This is file #%s.\n", padNum))
+	filedata := []byte(fmt.Sprintf("This is file #%s with junk content.\n", padNum))
 
 	f, err := os.Create(filepath.Join(dir, filename))
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
-	defer func() {
-		e := f.Close()
-		_ = e
-	}()
+	defer f.Close() //nolint
 
 	gzw := gzip.NewWriter(f)
 	if _, err = gzw.Write(filedata); err != nil {
-		return err
+		return wrapError(err)
 	}
-	defer func() {
-		e := gzw.Close()
-		_ = e
-	}()
+	defer gzw.Close() //nolint
 
-	return err
+	return nil
 }

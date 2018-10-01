@@ -19,12 +19,14 @@ func run() error {
 	var (
 		slow  = false
 		width = 8
+		dir   = "./testdata"
 	)
 	flag.BoolVar(&slow, "slow", slow, `slow processing to clarify behavior`)
 	flag.IntVar(&width, "width", width, `set concurrency width`)
+	flag.StringVar(&dir, "dir", dir, `set source directory`)
 	flag.Parse()
 
-	paths, err := gzipFilePaths("./testfiles")
+	paths, err := gzipFilePaths(dir)
 	if err != nil {
 		return err
 	}
