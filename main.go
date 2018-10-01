@@ -9,9 +9,13 @@ import (
 )
 
 func main() {
-	sm := sigmon.New(nil)
-	sm.Start()
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err) //nolint
+		os.Exit(1)
+	}
+}
 
+func run() error {
 	var (
 		slow  = false
 		width = 8
@@ -22,23 +26,29 @@ func main() {
 
 	paths, err := gzipFilePaths("./testfiles")
 	if err != nil {
-		fmt.Printf("cannot get paths: %s\n", err)
-		os.Exit(1)
+		return err
 	}
-	c := newConch()
+	done := make(chan struct{})
+	defer safeClose(done)
 
-	sm.Set(func(s *sigmon.State) {
-		close(c.done()) // trip on any system signal
+	sm := sigmon.New(func(s *sigmon.State) {
+		safeClose(done) // trip on any system signal
 	})
+	sm.Start()
+	defer sm.Stop()
 
-	fis, runErr := c.run(slow, width, paths)
+	fis, fisErr := fileInfos(done, slow, width, paths)
 	for fi := range fis {
 		fmt.Println(fi.path, fi.data, fi.err)
 	}
 
-	if err = runErr(); err != nil {
-		fmt.Printf("run error: %s\n", err)
-	}
+	return fisErr()
+}
 
-	sm.Stop()
+func safeClose(c chan struct{}) {
+	select {
+	case <-c:
+	default:
+		close(c)
+	}
 }

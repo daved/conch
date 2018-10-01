@@ -2,95 +2,84 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
 
-type conch struct {
-	d chan struct{}
-}
-
-func newConch() *conch {
-	return &conch{
-		d: make(chan struct{}),
-	}
-}
-
-func (c *conch) done() chan struct{} {
-	return c.d
-}
-
-func (c *conch) produce(paths []string) (<-chan string, <-chan error) {
+func produce(done <-chan struct{}, paths []string) (<-chan string, <-chan error) {
 	psc := make(chan string)
-	ec := make(chan error, 1)
+	esc := make(chan error, 1)
 
 	go func() {
 		defer close(psc)
+		defer close(esc)
 
 		for _, p := range paths {
 			select {
 			case psc <- p:
-			case <-c.d:
-				ec <- errors.New("canceled")
+			case <-done:
+				esc <- errors.New("canceled")
 				return
 			}
 		}
 	}()
 
-	return psc, ec
+	return psc, esc
 }
 
-func (c *conch) digest(slow bool, fisc chan<- *fileInfo, psc <-chan string) {
+func digest(done <-chan struct{}, slow bool, fisc chan<- *fileInfo, psc <-chan string) {
 	for p := range psc {
 		if slow {
 			select {
 			case <-time.After(time.Second):
-			case <-c.d:
+			case <-done:
 				return
 			}
 		}
 
-		fi := newFileInfo(p)
 		select {
-		case fisc <- fi:
-		case <-c.d:
+		case fisc <- newFileInfo(p):
+		case <-done:
 			return
 		}
 	}
 }
 
-func (c *conch) consume(slow bool, width int, psc <-chan string) <-chan *fileInfo {
+func consume(done <-chan struct{}, slow bool, width int, psc <-chan string) <-chan *fileInfo {
 	fisc := make(chan *fileInfo)
 
 	go func() {
+		defer close(fisc)
+
 		var wg sync.WaitGroup
 		wg.Add(width)
 
 		for i := 0; i < width; i++ {
 			go func() {
-				c.digest(slow, fisc, psc)
+				digest(done, slow, fisc, psc)
 				wg.Done()
 			}()
 		}
 
 		wg.Wait()
-		close(fisc)
 	}()
 
 	return fisc
 }
 
-func (c *conch) run(slow bool, width int, paths []string) (<-chan *fileInfo, func() error) {
-	psc, ec := c.produce(paths)
-	fisc := c.consume(slow, width, psc)
+func fileInfos(done <-chan struct{}, slow bool, width int, paths []string) (<-chan *fileInfo, func() error) {
+	psc, esc := produce(done, paths)
+	fisc := consume(done, slow, width, psc)
 
+	var last error
 	errFn := func() error {
-		select {
-		case err := <-ec:
-			return err
-		default:
-			return nil
+		if err := <-esc; err != nil {
+			last = fmt.Errorf("cannot handle fileInfos: %s", err)
+			return last
 		}
+
+		return last
 	}
 
 	return fisc, errFn

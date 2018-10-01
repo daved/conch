@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,41 +16,34 @@ type fileInfo struct {
 }
 
 func newFileInfo(path string) *fileInfo {
-	fo := &fileInfo{path: path}
-
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint
 	if err != nil {
-		fo.err = err
-		return fo
+		return &fileInfo{path: path, err: err}
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close() //nolint
 
 	gzr, err := gzip.NewReader(f)
 	if err != nil {
-		fo.err = err
-		return fo
+		return &fileInfo{path: path, err: err}
 	}
-	defer func() {
-		_ = gzr.Close()
-	}()
+	defer gzr.Close() //nolint
 
 	data, err := ioutil.ReadAll(gzr)
 	if err != nil {
-		fo.err = err
-		return fo
+		return &fileInfo{path: path, err: err}
 	}
 
-	fo.data = string(data)
-
-	return fo
+	return &fileInfo{path: path, data: string(data)}
 }
 
 func gzipFilePaths(dir string) ([]string, error) {
+	wrapErr := func(err error) error {
+		return fmt.Errorf("cannot get gzip paths: %s", err)
+	}
+
 	fis, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, wrapErr(err)
 	}
 
 	for k := len(fis) - 1; k >= 0; k-- {
