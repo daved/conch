@@ -38,11 +38,7 @@ func digest(done <-chan struct{}, slow bool, fisc chan<- *fileInfo, psc <-chan s
 			}
 		}
 
-		select {
-		case fisc <- newFileInfo(p):
-		case <-done:
-			return
-		}
+		fisc <- newFileInfo(p)
 	}
 }
 
@@ -72,8 +68,13 @@ func fileInfos(done <-chan struct{}, slow bool, width int, paths []string) (<-ch
 	psc, esc := produce(done, paths)
 	fisc := consume(done, slow, width, psc)
 
+	return fisc, fileInfosErrorFunc(esc)
+}
+
+func fileInfosErrorFunc(esc <-chan error) func() error {
 	var last error
-	errFn := func() error {
+
+	return func() error {
 		if err := <-esc; err != nil {
 			last = fmt.Errorf("cannot handle fileInfos: %s", err)
 			return last
@@ -81,6 +82,4 @@ func fileInfos(done <-chan struct{}, slow bool, width int, paths []string) (<-ch
 
 		return last
 	}
-
-	return fisc, errFn
 }
