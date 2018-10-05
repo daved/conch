@@ -77,7 +77,6 @@ func fileInfosErrorFunc(esc <-chan error) func() error {
 	return func() error {
 		if err := <-esc; err != nil {
 			last = fmt.Errorf("cannot handle fileInfos: %s", err)
-			return last
 		}
 
 		return last
